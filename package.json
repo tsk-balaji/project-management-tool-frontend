@@ -25,6 +25,7 @@
     "redux": "^5.0.1",
     "redux-thunk": "^3.1.0",
     "thunk": "^0.0.1",
+    "xlsx": "^0.18.5",
     "yup": "^1.4.0"
   },
   "devDependencies": {

@@ -1,15 +1,19 @@
 // eslint-disable-next-line no-unused-vars
 import React, { useEffect, useState } from "react";
 import { Card, Row, Col, Spinner, Badge, Alert, Button } from "react-bootstrap";
-import axios from "axios"; // Using axios for HTTP requests
+import axios from "axios";
 import { Link } from "react-router-dom";
+import * as XLSX from "xlsx"; // Library to handle Excel export
 
 const Dashboard = () => {
   const [projectsStats, setProjectsStats] = useState([]);
   const [issuesStats, setIssuesStats] = useState([]);
-  const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState({
+    projects: [],
+    issues: [],
+  });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null); // For handling errors
+  const [error, setError] = useState(null);
 
   // Function to get the token from localStorage
   const getAuthToken = () => {
@@ -22,7 +26,7 @@ const Dashboard = () => {
     const today = new Date();
     const diffTime = deadlineDate - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 && diffDays <= 3; // Check if the deadline is within the next 3 days
+    return diffDays > 0 && diffDays <= 3;
   };
 
   useEffect(() => {
@@ -35,25 +39,20 @@ const Dashboard = () => {
           return;
         }
 
-        // Fetch projects data
-        const projectsResponse = await axios.get(
-          "https://project-management-tool-backend-cxpj.onrender.com/api/projects/",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        // Fetch issues data
-        const issuesResponse = await axios.get(
-          "https://project-management-tool-backend-cxpj.onrender.com/api/issues/",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const [projectsResponse, issuesResponse] = await Promise.all([
+          axios.get(
+            "https://project-management-tool-backend-cxpj.onrender.com/api/projects/",
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          ),
+          axios.get(
+            "https://project-management-tool-backend-cxpj.onrender.com/api/issues/",
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          ),
+        ]);
 
         const projectsData = Array.isArray(projectsResponse.data)
           ? projectsResponse.data
@@ -62,11 +61,9 @@ const Dashboard = () => {
           ? issuesResponse.data
           : [];
 
-        // Ensure that `projectsStats` and `issuesStats` are arrays
         setProjectsStats(projectsData);
         setIssuesStats(issuesData);
 
-        // Filter projects and issues with upcoming deadlines (within next 3 days)
         const upcomingIssues = issuesData.filter((issue) =>
           isDeadlineUpcoming(issue.deadline)
         );
@@ -78,7 +75,6 @@ const Dashboard = () => {
           issues: upcomingIssues,
           projects: upcomingProjects,
         });
-
         setLoading(false);
       } catch (err) {
         console.error("Error fetching data: ", err);
@@ -89,6 +85,21 @@ const Dashboard = () => {
 
     fetchData();
   }, []);
+
+  const exportToExcel = () => {
+    const workbook = XLSX.utils.book_new();
+
+    // Create sheets for projects and issues
+    const projectsSheet = XLSX.utils.json_to_sheet(projectsStats);
+    const issuesSheet = XLSX.utils.json_to_sheet(issuesStats);
+
+    // Add sheets to the workbook
+    XLSX.utils.book_append_sheet(workbook, projectsSheet, "Projects");
+    XLSX.utils.book_append_sheet(workbook, issuesSheet, "Issues");
+
+    // Generate Excel file and trigger download
+    XLSX.writeFile(workbook, "Dashboard_Report.xlsx");
+  };
 
   if (loading) {
     return (
@@ -116,8 +127,10 @@ const Dashboard = () => {
     <div>
       <h2 className="mb-4">Dashboard</h2>
 
-      {/* Link to Projects at the top right corner */}
-      <div className="d-flex justify-content-end mb-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <Button variant="success" onClick={exportToExcel}>
+          Export
+        </Button>
         <Link to="/projects">
           <Button variant="primary">Go to Projects</Button>
         </Link>
@@ -125,22 +138,16 @@ const Dashboard = () => {
 
       <Row>
         <Col md={6}>
-          <Link to="/projects" style={{ textDecoration: "none" }}>
-            <Card className="mb-3 shadow-sm">
-              <Card.Body>
-                <Card.Title className="d-flex justify-content-between align-items-center">
-                  <span>Total Projects</span>
-                  <Badge bg="primary" pill>
-                    {projectsStats.length}
-                  </Badge>
-                </Card.Title>
-                <Card.Text>
-                  Keep track of the number of projects you&apos;ve been
-                  assigned.
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          </Link>
+          <Card className="mb-3 shadow-sm">
+            <Card.Body>
+              <Card.Title className="d-flex justify-content-between align-items-center">
+                <span>Total Projects</span>
+                <Badge bg="primary" pill>
+                  {projectsStats.length}
+                </Badge>
+              </Card.Title>
+            </Card.Body>
+          </Card>
         </Col>
         <Col md={6}>
           <Card className="mb-3 shadow-sm">
@@ -151,17 +158,13 @@ const Dashboard = () => {
                   {issuesStats.length}
                 </Badge>
               </Card.Title>
-              <Card.Text>
-                Review the current number of issues associated with your
-                projects.
-              </Card.Text>
             </Card.Body>
           </Card>
         </Col>
       </Row>
 
       <Row>
-        <Col md={12}>
+        <Col md={6}>
           <Card className="mb-3 shadow-sm">
             <Card.Body>
               <Card.Title className="d-flex justify-content-between align-items-center">
@@ -170,55 +173,18 @@ const Dashboard = () => {
                   {upcomingDeadlines.projects.length}
                 </Badge>
               </Card.Title>
-              {upcomingDeadlines.projects.length > 0 ? (
-                <ul className="list-unstyled">
-                  {upcomingDeadlines.projects.map((project, index) => (
-                    <li key={index} className="mb-2">
-                      <Link to={`/projects/${project._id}`}>
-                        <strong>{project.name}</strong>
-                      </Link>{" "}
-                      - Deadline:{" "}
-                      <span className="text-muted">
-                        {new Date(project.deadline).toLocaleDateString()}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <Alert variant="info">
-                  No projects with upcoming deadlines
-                </Alert>
-              )}
             </Card.Body>
           </Card>
         </Col>
-
-        <Col md={12}>
+        <Col md={6}>
           <Card className="mb-3 shadow-sm">
             <Card.Body>
               <Card.Title className="d-flex justify-content-between align-items-center">
-                <span>Issues With Upcoming Deadlines</span>
+                <span>Upcoming Issues</span>
                 <Badge bg="info" pill>
                   {upcomingDeadlines.issues.length}
                 </Badge>
               </Card.Title>
-              {upcomingDeadlines.issues.length > 0 ? (
-                <ul className="list-unstyled">
-                  {upcomingDeadlines.issues.map((issue, index) => (
-                    <li key={index} className="mb-2">
-                      <Link to={`/issues/${issue._id}`}>
-                        <strong>{issue.title}</strong>
-                      </Link>{" "}
-                      - Due:{" "}
-                      <span className="text-muted">
-                        {new Date(issue.deadline).toLocaleDateString()}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <Alert variant="info">No upcoming issues</Alert>
-              )}
             </Card.Body>
           </Card>
         </Col>
