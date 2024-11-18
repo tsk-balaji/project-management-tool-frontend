@@ -1,166 +1,196 @@
 // eslint-disable-next-line no-unused-vars
-import React, { useState, useEffect } from "react";
-import { Container, Button, Spinner, Alert, Card } from "react-bootstrap";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
-import ProjectList from "../components/ProjectList";
-import ProjectForm from "../components/ProjectForm";
+import { useNavigate } from "react-router-dom";
+import { Modal, Button } from "react-bootstrap";
 
-const Projects = () => {
+const ProjectsPage = () => {
   const [projects, setProjects] = useState([]);
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [isFormVisible, setIsFormVisible] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newProject, setNewProject] = useState({
+    title: "",
+    description: "",
+    deadline: "",
+  });
+  const navigate = useNavigate();
 
-  const fetchProjects = async () => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      setError("Authorization token is missing.");
-      setLoading(false);
-      return;
-    }
+  const token = localStorage.getItem("authToken");
 
-    try {
-      const response = await axios.get(
-        "https://project-management-tool-backend-cxpj.onrender.com/api/projects/",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setProjects(Array.isArray(response.data) ? response.data : []);
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching projects:", err);
-      setError("Failed to load projects.");
-      setLoading(false);
-    }
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   };
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
-
-  const handleAddOrUpdateProject = (project) => {
-    if (selectedProject) {
-      setProjects((prevProjects) =>
-        prevProjects.map((p) =>
-          p.id === selectedProject.id ? { ...p, ...project } : p
-        )
-      );
+    if (token) {
+      fetchProjects();
     } else {
-      setProjects((prevProjects) => [
-        ...prevProjects,
-        { ...project, id: Date.now() },
-      ]);
+      window.location.href = "/login";
     }
-    setSelectedProject(null);
-    setIsFormVisible(false);
+  }, [token]);
+
+  const fetchProjects = async () => {
+    try {
+      const response = await axios.get(
+        "https://project-management-tool-backend-cxpj.onrender.com/api/projects",
+        config
+      );
+      setProjects(response.data.projects || []);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+    }
   };
 
-  const handleEdit = (id) => {
-    const projectToEdit = projects.find((p) => p.id === id);
-    setSelectedProject(projectToEdit);
-    setIsFormVisible(true);
+  const handleProjectClick = (projectId) => {
+    navigate(`/project/${projectId}`);
   };
 
-  const handleDelete = (id) => {
-    setProjects((prevProjects) => prevProjects.filter((p) => p.id !== id));
+  const handleEditClick = (projectId) => {
+    navigate(`/edit-project/${projectId}`);
   };
 
-  const handleAddProject = () => {
-    setSelectedProject(null);
-    setIsFormVisible(true);
+  const handleNewProjectChange = (e) => {
+    setNewProject({ ...newProject, [e.target.name]: e.target.value });
   };
 
-  const handleCancel = () => {
-    setIsFormVisible(false);
-    setSelectedProject(null);
+  const handleAddProject = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post(
+        "https://project-management-tool-backend-cxpj.onrender.com/api/projects",
+        newProject,
+        config
+      );
+      setProjects((prevProjects) => [response.data.project, ...prevProjects]);
+      setShowAddModal(false);
+    } catch (error) {
+      console.error("Error creating project:", error);
+    }
   };
-
-  if (loading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center vh-100">
-        <Spinner animation="border" variant="primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container className="mt-5">
-        <Alert variant="danger" className="text-center shadow">
-          <Alert.Heading>Error</Alert.Heading>
-          <p>{error}</p>
-        </Alert>
-      </Container>
-    );
-  }
 
   return (
-    <Container className="py-5">
-      <Card className="shadow-sm">
-        <Card.Body>
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h2 className="mb-0">
-              <i className="fas fa-project-diagram me-2"></i>Projects
-            </h2>
-            <Button
-              variant={isFormVisible ? "outline-secondary" : "primary"}
-              onClick={handleAddProject}
-              className="rounded-pill shadow-sm"
-            >
-              <i
-                className={`fas ${isFormVisible ? "fa-times" : "fa-plus"} me-2`}
-              ></i>
-              {isFormVisible ? "Cancel" : "Add Project"}
-            </Button>
+    <div className="container mt-5">
+      {/* Dashboard and Add Project Buttons */}
+      <h1 className="text-center mb-4"> Projects </h1>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <button
+            className="btn btn-outline-secondary btn-lg shadow-sm"
+            onClick={() => navigate("/dashboard")}
+          >
+            <i className="fas fa-tachometer-alt me-2"></i>
+            Dashboard
+          </button>
+        </div>
+        <button
+          className="btn btn-primary btn-lg shadow-sm"
+          onClick={() => setShowAddModal(true)}
+        >
+          <i className="fas fa-plus me-2"></i>
+          Add New Project
+        </button>
+      </div>
+
+      {/* Project List */}
+      <div className="row g-4">
+        {projects.map((project) => (
+          <div key={project._id} className="col-md-4">
+            <div className="card h-100 shadow-sm hover-shadow transition">
+              <div className="card-body d-flex flex-column">
+                <h5 className="card-title fw-bold text-primary mb-3">
+                  {project.title}
+                </h5>
+                <p className="card-text flex-grow-1">{project.description}</p>
+                <div className="mt-3">
+                  <p className="text-muted mb-3">
+                    <i className="far fa-calendar-alt me-2"></i>
+                    <strong>Deadline:</strong>{" "}
+                    {new Date(project.deadline).toLocaleDateString()}
+                  </p>
+                  <div className="d-flex gap-2">
+                    <button
+                      className="btn btn-primary flex-grow-1"
+                      onClick={() => handleProjectClick(project._id)}
+                    >
+                      <i className="fas fa-arrow-right me-2"></i>
+                      View Project
+                    </button>
+                    <button
+                      className="btn btn-outline-secondary"
+                      onClick={() => handleEditClick(project._id)}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+        ))}
+      </div>
 
-          {isFormVisible ? (
-            <Card className="border-0 shadow-sm mb-4">
-              <Card.Body>
-                <ProjectForm
-                  initialValues={
-                    selectedProject || { title: "", category: "", deadline: "" }
-                  }
-                  onSubmit={handleAddOrUpdateProject}
-                  onCancel={handleCancel}
-                />
-              </Card.Body>
-            </Card>
-          ) : Array.isArray(projects) && projects.length > 0 ? (
-            <ProjectList
-              projects={projects}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
-          ) : (
-            <Alert variant="info" className="text-center">
-              <i className="fas fa-info-circle me-2"></i>
-              No projects found. Click &quot;Add Project &quot; to create one.
-            </Alert>
-          )}
-
-          {isFormVisible && (
-            <div className="text-end mt-3">
+      {/* Add Project Modal */}
+      <Modal
+        show={showAddModal}
+        onHide={() => setShowAddModal(false)}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton className="border-0">
+          <Modal.Title className="fw-bold">Create New Project</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="px-4">
+          <form onSubmit={handleAddProject}>
+            <div className="mb-3">
+              <label className="form-label fw-bold">Project Title</label>
+              <input
+                type="text"
+                className="form-control form-control-lg"
+                name="title"
+                value={newProject.title}
+                onChange={handleNewProjectChange}
+                placeholder="Enter project title"
+              />
+            </div>
+            <div className="mb-3">
+              <label className="form-label fw-bold">Description</label>
+              <textarea
+                className="form-control"
+                name="description"
+                rows="4"
+                value={newProject.description}
+                onChange={handleNewProjectChange}
+                placeholder="Enter project description"
+              ></textarea>
+            </div>
+            <div className="mb-4">
+              <label className="form-label fw-bold">Deadline</label>
+              <input
+                type="date"
+                className="form-control"
+                name="deadline"
+                value={newProject.deadline}
+                onChange={handleNewProjectChange}
+              />
+            </div>
+            <div className="d-flex gap-2 justify-content-end">
               <Button
-                variant="outline-secondary"
-                onClick={handleCancel}
-                className="rounded-pill"
+                variant="light"
+                onClick={() => setShowAddModal(false)}
+                size="lg"
               >
-                <i className="fas fa-times me-2"></i>
                 Cancel
               </Button>
+              <Button variant="primary" type="submit" size="lg">
+                Create Project
+              </Button>
             </div>
-          )}
-        </Card.Body>
-      </Card>
-    </Container>
+          </form>
+        </Modal.Body>
+      </Modal>
+    </div>
   );
 };
 
-export default Projects;
+export default ProjectsPage;

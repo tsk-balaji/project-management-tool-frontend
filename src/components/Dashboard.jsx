@@ -1,6 +1,6 @@
 // eslint-disable-next-line no-unused-vars
 import React, { useEffect, useState } from "react";
-import { Card, Row, Col, Spinner, Badge, Alert } from "react-bootstrap";
+import { Card, Row, Col, Spinner, Badge, Alert, Button } from "react-bootstrap";
 import axios from "axios"; // Using axios for HTTP requests
 import { Link } from "react-router-dom";
 
@@ -70,8 +70,14 @@ const Dashboard = () => {
         const upcomingIssues = issuesData.filter((issue) =>
           isDeadlineUpcoming(issue.deadline)
         );
+        const upcomingProjects = projectsData.filter((project) =>
+          isDeadlineUpcoming(project.deadline)
+        );
 
-        setUpcomingDeadlines(upcomingIssues);
+        setUpcomingDeadlines({
+          issues: upcomingIssues,
+          projects: upcomingProjects,
+        });
 
         setLoading(false);
       } catch (err) {
@@ -109,6 +115,14 @@ const Dashboard = () => {
   return (
     <div>
       <h2 className="mb-4">Dashboard</h2>
+
+      {/* Link to Projects at the top right corner */}
+      <div className="d-flex justify-content-end mb-4">
+        <Link to="/projects">
+          <Button variant="primary">Go to Projects</Button>
+        </Link>
+      </div>
+
       <Row>
         <Col md={6}>
           <Link to="/projects" style={{ textDecoration: "none" }}>
@@ -153,31 +167,27 @@ const Dashboard = () => {
               <Card.Title className="d-flex justify-content-between align-items-center">
                 <span>Upcoming Projects</span>
                 <Badge bg="info" pill>
-                  {
-                    projectsStats.filter((project) =>
-                      isDeadlineUpcoming(project.deadline)
-                    ).length
-                  }
+                  {upcomingDeadlines.projects.length}
                 </Badge>
               </Card.Title>
-              {projectsStats.length > 0 ? (
+              {upcomingDeadlines.projects.length > 0 ? (
                 <ul className="list-unstyled">
-                  {projectsStats
-                    .filter((project) => isDeadlineUpcoming(project.deadline))
-                    .map((project, index) => (
-                      <li key={index} className="mb-2">
-                        <Link to={`/projects/${project._id}`}>
-                          <strong>{project.name}</strong>
-                        </Link>{" "}
-                        - Deadline:{" "}
-                        <span className="text-muted">
-                          {new Date(project.deadline).toLocaleDateString()}
-                        </span>
-                      </li>
-                    ))}
+                  {upcomingDeadlines.projects.map((project, index) => (
+                    <li key={index} className="mb-2">
+                      <Link to={`/projects/${project._id}`}>
+                        <strong>{project.name}</strong>
+                      </Link>{" "}
+                      - Deadline:{" "}
+                      <span className="text-muted">
+                        {new Date(project.deadline).toLocaleDateString()}
+                      </span>
+                    </li>
+                  ))}
                 </ul>
               ) : (
-                <Alert variant="info">No projects data available</Alert>
+                <Alert variant="info">
+                  No projects with upcoming deadlines
+                </Alert>
               )}
             </Card.Body>
           </Card>
@@ -189,12 +199,12 @@ const Dashboard = () => {
               <Card.Title className="d-flex justify-content-between align-items-center">
                 <span>Issues With Upcoming Deadlines</span>
                 <Badge bg="info" pill>
-                  {upcomingDeadlines.length}
+                  {upcomingDeadlines.issues.length}
                 </Badge>
               </Card.Title>
-              {upcomingDeadlines.length > 0 ? (
+              {upcomingDeadlines.issues.length > 0 ? (
                 <ul className="list-unstyled">
-                  {upcomingDeadlines.map((issue, index) => (
+                  {upcomingDeadlines.issues.map((issue, index) => (
                     <li key={index} className="mb-2">
                       <Link to={`/issues/${issue._id}`}>
                         <strong>{issue.title}</strong>
@@ -207,7 +217,7 @@ const Dashboard = () => {
                   ))}
                 </ul>
               ) : (
-                <Alert variant="info">No upcoming deadlines</Alert>
+                <Alert variant="info">No upcoming issues</Alert>
               )}
             </Card.Body>
           </Card>

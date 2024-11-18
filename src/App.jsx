@@ -12,6 +12,9 @@ import Dashboard from "./components/Dashboard";
 import ActivateAccount from "./components/ActivateAccount";
 import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
+import ProjectDetailsPage from "./pages/ProjectsDetailsPage";
+import EditProjectPage from "./pages/EditProject";
+import EditIssuePage from "./pages/EditIssuePage";
 
 const App = () => {
   return (
@@ -29,8 +32,9 @@ const App = () => {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/projects" element={<Projects />} />
+              <Route path="/project/:id" element={<ProjectDetailsPage />} />
+              <Route path="/edit-issue/:issueId" element={<EditIssuePage />} />
               <Route path="/dashboard" element={<Dashboard />} />
-
               <Route path="/" element={<Login />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
@@ -38,8 +42,8 @@ const App = () => {
                 path="/activate-account/:token"
                 element={<ActivateAccount />}
               />
-
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/edit-project/:id" element={<EditProjectPage />} />
               <Route
                 path="/reset-password/:token"
                 element={<ResetPassword />}
