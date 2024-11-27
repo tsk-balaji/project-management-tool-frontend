@@ -2,25 +2,27 @@
 import React, { useEffect, useState } from "react";
 import { Card, Row, Col, Spinner, Badge, Alert, Button } from "react-bootstrap";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import * as XLSX from "xlsx"; // Library to handle Excel export
+import {
+  setUpcomingProjects,
+  setUpcomingIssues,
+} from "../redux/reducers/dashboardReducer"; // Import your Redux actions
 
 const Dashboard = () => {
   const [projectsStats, setProjectsStats] = useState([]);
   const [issuesStats, setIssuesStats] = useState([]);
-  const [upcomingDeadlines, setUpcomingDeadlines] = useState({
-    projects: [],
-    issues: [],
-  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Function to get the token from localStorage
-  const getAuthToken = () => {
-    return localStorage.getItem("authToken");
-  };
+  const dispatch = useDispatch(); // Use dispatch to send actions to Redux
+  const navigate = useNavigate();
 
-  // Function to check if issue/project deadline is within the next 3 days
+  // Function to get the token
+  const getAuthToken = () => localStorage.getItem("authToken");
+
+  // Function to check if a deadline is within 3 days
   const isDeadlineUpcoming = (deadline) => {
     const deadlineDate = new Date(deadline);
     const today = new Date();
@@ -29,6 +31,7 @@ const Dashboard = () => {
     return diffDays > 0 && diffDays <= 3;
   };
 
+  // Fetch projects and issues data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -54,53 +57,58 @@ const Dashboard = () => {
           ),
         ]);
 
-        const projectsData = Array.isArray(projectsResponse.data)
-          ? projectsResponse.data
-          : [];
-        const issuesData = Array.isArray(issuesResponse.data)
-          ? issuesResponse.data
-          : [];
+        const projectsData = projectsResponse.data.projects || [];
+        const issuesData = issuesResponse.data || [];
 
         setProjectsStats(projectsData);
         setIssuesStats(issuesData);
 
-        const upcomingIssues = issuesData.filter((issue) =>
-          isDeadlineUpcoming(issue.deadline)
-        );
+        // Filter upcoming projects and issues
         const upcomingProjects = projectsData.filter((project) =>
           isDeadlineUpcoming(project.deadline)
         );
+        const upcomingIssues = issuesData.filter((issue) =>
+          isDeadlineUpcoming(issue.dueDate)
+        );
 
-        setUpcomingDeadlines({
-          issues: upcomingIssues,
-          projects: upcomingProjects,
-        });
+        // Dispatch data to Redux
+        dispatch(setUpcomingProjects(upcomingProjects));
+        dispatch(setUpcomingIssues(upcomingIssues));
+
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching data: ", err);
-        setError("Failed to load data.");
+        console.error("Error fetching data:", err);
+        setError(
+          "Failed to load data. Please check your connection or contact support."
+        );
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [dispatch]); // Add dispatch as a dependency
 
+  // Export the data to Excel
   const exportToExcel = () => {
     const workbook = XLSX.utils.book_new();
-
-    // Create sheets for projects and issues
     const projectsSheet = XLSX.utils.json_to_sheet(projectsStats);
     const issuesSheet = XLSX.utils.json_to_sheet(issuesStats);
 
-    // Add sheets to the workbook
     XLSX.utils.book_append_sheet(workbook, projectsSheet, "Projects");
     XLSX.utils.book_append_sheet(workbook, issuesSheet, "Issues");
 
-    // Generate Excel file and trigger download
     XLSX.writeFile(workbook, "Dashboard_Report.xlsx");
   };
 
+  // Define upcoming deadlines for projects and issues
+  const upcomingDeadlines = {
+    projects: projectsStats.filter((project) =>
+      isDeadlineUpcoming(project.deadline)
+    ),
+    issues: issuesStats.filter((issue) => isDeadlineUpcoming(issue.dueDate)),
+  };
+
+  // Handle loading state
   if (loading) {
     return (
       <div
@@ -112,6 +120,7 @@ const Dashboard = () => {
     );
   }
 
+  // Handle error state
   if (error) {
     return (
       <div
@@ -123,9 +132,12 @@ const Dashboard = () => {
     );
   }
 
+  // Render the dashboard
   return (
     <div>
-      <h2 className="mb-4">Dashboard</h2>
+      <h2 className="mb-4 " style={{ paddingTop: "60px" }}>
+        Dashboard
+      </h2>
 
       <div className="d-flex justify-content-between align-items-center mb-4">
         <Button variant="success" onClick={exportToExcel}>
@@ -138,7 +150,11 @@ const Dashboard = () => {
 
       <Row>
         <Col md={6}>
-          <Card className="mb-3 shadow-sm">
+          <Card
+            className="mb-3 shadow-sm clickable-card"
+            onClick={() => navigate("/projects")}
+            style={{ cursor: "pointer" }}
+          >
             <Card.Body>
               <Card.Title className="d-flex justify-content-between align-items-center">
                 <span>Total Projects</span>
@@ -150,7 +166,11 @@ const Dashboard = () => {
           </Card>
         </Col>
         <Col md={6}>
-          <Card className="mb-3 shadow-sm">
+          <Card
+            className="mb-3 shadow-sm clickable-card"
+            onClick={() => navigate("/issues")}
+            style={{ cursor: "pointer" }}
+          >
             <Card.Body>
               <Card.Title className="d-flex justify-content-between align-items-center">
                 <span>Total Issues</span>
@@ -165,7 +185,11 @@ const Dashboard = () => {
 
       <Row>
         <Col md={6}>
-          <Card className="mb-3 shadow-sm">
+          <Card
+            className="mb-3 shadow-sm clickable-card"
+            onClick={() => navigate("/projects/upcoming")}
+            style={{ cursor: "pointer" }}
+          >
             <Card.Body>
               <Card.Title className="d-flex justify-content-between align-items-center">
                 <span>Upcoming Projects</span>
@@ -177,7 +201,11 @@ const Dashboard = () => {
           </Card>
         </Col>
         <Col md={6}>
-          <Card className="mb-3 shadow-sm">
+          <Card
+            className="mb-3 shadow-sm clickable-card"
+            onClick={() => navigate("/issues/upcoming")}
+            style={{ cursor: "pointer" }}
+          >
             <Card.Body>
               <Card.Title className="d-flex justify-content-between align-items-center">
                 <span>Upcoming Issues</span>

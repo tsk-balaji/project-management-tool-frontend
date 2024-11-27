@@ -14,14 +14,33 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    localStorage.setItem("email", formData.email); // Store email in localStorage before sending it
+
     try {
-      const response = await axios.post(
+      // Step 1: Login user and retrieve auth token
+      const loginResponse = await axios.post(
         "https://project-management-tool-backend-cxpj.onrender.com/api/auth/login",
         formData
       );
-      localStorage.setItem("authToken", response.data.token); // Save token
-      navigate("/dashboard"); // Redirect to dashboard
+
+      console.log(loginResponse);
+
+      const token = loginResponse.data.token; // Get token from login response
+      localStorage.setItem("authToken", token); // Save token
+
+      if (loginResponse.data.user) {
+        localStorage.setItem(
+          "userDetails",
+          JSON.stringify(loginResponse.data.user)
+        );
+      }
+
+      console.log("User Details Saved:", localStorage.getItem("userDetails"));
+
+      // Step 3: Redirect to dashboard
+      navigate("/dashboard");
     } catch (error) {
+      console.error(error); // Log error details for debugging
       setError(error.response?.data?.message || "Login failed");
     }
   };

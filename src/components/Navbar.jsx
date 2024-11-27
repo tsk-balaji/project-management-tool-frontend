@@ -1,84 +1,81 @@
 // eslint-disable-next-line no-unused-vars
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Navbar, Nav, Container, Button } from "react-bootstrap";
-import { useSelector } from "react-redux";
+import { Navbar, Nav, Container, NavDropdown } from "react-bootstrap";
+import { Link } from "react-router-dom";
 
 const NavBar = () => {
-  const location = useLocation();
-  const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
-  const isHomePage = location.pathname === "/";
+  const isLoggedIn = Boolean(localStorage.getItem("authToken")); // Check if user is logged in
+  const userDetails = JSON.parse(localStorage.getItem("userDetails")) || {}; // Get user details from localStorage
 
   return (
-    <Navbar
-      bg="dark"
-      variant="dark"
-      expand="lg"
-      sticky="top"
-      className="py-3 shadow"
-    >
-      <Container fluid>
-        <Navbar.Brand
-          as={Link}
-          to="/"
-          style={{
-            fontSize: "2rem",
-            fontWeight: "700",
-            letterSpacing: "0.5px",
-            color: "#fff",
-            "@media (max-width: 576px)": {
-              fontSize: "1.6rem",
-            },
-          }}
-        >
-          Project Management
+    <Navbar bg="dark" variant="dark" expand="lg" fixed="top">
+      <Container>
+        <Navbar.Brand as={Link} to="/dashboard">
+          Project Manager
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
-          <Nav className="ms-auto align-items-center">
-            <Nav.Link
-              as={Link}
-              to="/dashboard"
-              className="nav-link px-3 mx-2 text-light hover-effect"
-              style={{ fontSize: "1.1rem" }}
-            >
-              Dashboard
-            </Nav.Link>
-            <Nav.Link
-              as={Link}
-              to="/projects"
-              className="nav-link px-3 mx-2 text-light hover-effect"
-              style={{ fontSize: "1.1rem" }}
-            >
+          <Nav className="me-auto">
+            <Nav.Link as={Link} to="/projects">
               Projects
             </Nav.Link>
-            {!isLoggedIn && isHomePage && (
-              <>
-                <Nav.Link as={Link} to="/login">
-                  <Button
-                    variant="outline-light"
-                    className="px-4 py-2 mx-2 rounded-pill fw-bold"
-                    style={{ transition: "all 0.3s ease" }}
-                  >
-                    Login
-                  </Button>
-                </Nav.Link>
-                <Nav.Link as={Link} to="/register">
-                  <Button
-                    variant="primary"
-                    className="px-4 py-2 mx-2 rounded-pill fw-bold"
-                    style={{
-                      transition: "all 0.3s ease",
-                      backgroundColor: "#0d6efd",
-                      borderColor: "#0d6efd",
-                    }}
-                  >
-                    Register
-                  </Button>
-                </Nav.Link>
-              </>
+            <NavDropdown title="Issues" id="issues-dropdown">
+              <NavDropdown.Item as={Link} to="/issues">
+                All Issues
+              </NavDropdown.Item>
+              <NavDropdown.Item as={Link} to="/issues/upcoming">
+                Upcoming Issues
+              </NavDropdown.Item>
+            </NavDropdown>
+            {!isLoggedIn && ( // Conditionally render Account dropdown if not logged in
+              <NavDropdown title="Account" id="account-dropdown">
+                <NavDropdown.Item as={Link} to="/login">
+                  Login
+                </NavDropdown.Item>
+                <NavDropdown.Item as={Link} to="/register">
+                  Register
+                </NavDropdown.Item>
+                <NavDropdown.Item as={Link} to="/forgot-password">
+                  Forgot Password
+                </NavDropdown.Item>
+              </NavDropdown>
             )}
           </Nav>
+          {isLoggedIn && ( // Render profile dropdown if logged in
+            <Nav>
+              <NavDropdown
+                align="end"
+                title={
+                  <span>
+                    <i
+                      className="bi bi-person-circle"
+                      style={{ fontSize: "1.5rem" }}
+                    ></i>
+                  </span>
+                }
+                id="profile-dropdown"
+              >
+                <NavDropdown.Header>
+                  <div>
+                    <strong>{userDetails.name || "User Name"}</strong>
+                  </div>
+                  <small>{userDetails.email || "user@example.com"}</small>
+                </NavDropdown.Header>
+                <NavDropdown.Divider />
+                <NavDropdown.Item
+                  as={Link}
+                  to="/login"
+                  onClick={() => {
+                    localStorage.removeItem("authToken"); // Clear token on logout
+                    localStorage.removeItem("userDetails"); // Clear user details
+                    window.location.reload(); // Reload to update NavBar
+                  }}
+                >
+                  Logout
+                </NavDropdown.Item>
+              </NavDropdown>
+            </Nav>
+          )}
         </Navbar.Collapse>
       </Container>
     </Navbar>
